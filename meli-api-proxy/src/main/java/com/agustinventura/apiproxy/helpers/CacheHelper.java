@@ -39,7 +39,6 @@ public class CacheHelper {
 		UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(uri);
 		KeyValue oKeyValueResponse = restTemplate.postForEntity(builder.build().encode().toUri(),oKeyValue, KeyValue.class).getBody();
 	
-		logger.info(oKeyValueResponse.getKey());
 	}	
 	
 	public KeyValue getRequestsByKey(String key) {
@@ -50,8 +49,7 @@ public class CacheHelper {
 		
 		KeyValue oKeyValue = new KeyValue();
 		String uri = cacheUri;
-		UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(uri).
-				path(key);
+		UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(uri).path(key);
 		oKeyValue = restTemplate.getForEntity(builder.build().encode().toUri(), KeyValue.class).getBody();
 		return oKeyValue;
 	}

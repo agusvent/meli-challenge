@@ -20,12 +20,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import reactor.core.publisher.Mono;
 
 @Component
-public class AgusGlobalPreFilter implements GlobalFilter{
+public class MeliApiProxyGlobalPreFilter implements GlobalFilter{
 
 	@Autowired
 	FilterHelper filterHelper;
 
-	final Logger logger = LoggerFactory.getLogger(AgusGlobalPreFilter.class);
+	final Logger logger = LoggerFactory.getLogger(MeliApiProxyGlobalPreFilter.class);
 	
 	@Override
 	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain){

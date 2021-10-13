@@ -34,7 +34,44 @@ public class FilterHelper {
 	Integer maxRequestsByClientAndPathPerMinute;
 
 	final Logger logger = LoggerFactory.getLogger(FilterHelper.class);
+
+	public FilterProcessResponse executeFilters(String client, String path) throws JsonMappingException, JsonProcessingException {
+		LocalDateTime dateTime = LocalDateTime.now();
+		String fecha = dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
 		
+		String keyFilterByClient = client.concat("_").concat(fecha);
+		String keyFilterByPath = path.concat("_").concat(fecha);
+		String keyFilterByClientAndPath = client.concat("_").concat(path).concat("_").concat(fecha);
+		
+		if(!this.filterUnwishedClients(client)) {
+			logger.info("FILTRANDO POR CLIENTE NO DESEADO");
+			if(!this.filterByClient(keyFilterByClient)) {
+				logger.info("FILTRANDO POR MAX REQ POR CLIENTE POR MINUTO");
+				cacheHelper.saveCache(keyFilterByClient);
+			}else {
+				return new FilterProcessResponse(true,"Too Many Connections: se alcanzó el máximo de requests por cliente por minuto.",HttpStatus.TOO_MANY_REQUESTS);
+			}
+
+			if (!this.filterByPath(keyFilterByPath)){
+				logger.info("FILTRANDO POR MAX REQ POR PATH POR MINUTO");
+				cacheHelper.saveCache(keyFilterByPath);
+			}else{
+				return new FilterProcessResponse(true,"Too Many Connections: se alcanzó el máximo de requests por path por minuto.",HttpStatus.TOO_MANY_REQUESTS);
+			}
+
+			if (!this.filterByClientAndPath(keyFilterByClientAndPath)){
+				logger.info("FILTRANDO POR MAX REQ POR CLIENTE Y PATH POR MINUTO");
+				cacheHelper.saveCache(keyFilterByClientAndPath);
+			}else{
+				return new FilterProcessResponse(true,"Too Many Connections: se alcanzó el máximo de requests por cliente y path por minuto.",HttpStatus.TOO_MANY_REQUESTS);
+			}
+			
+			return new FilterProcessResponse(false,"",HttpStatus.ACCEPTED);			
+		}else {
+			return new FilterProcessResponse(true,"Cliente no deseado.",HttpStatus.UNAUTHORIZED);
+		}
+	}
+	
 	private boolean filterByClient(String key) throws JsonMappingException, JsonProcessingException {
 		boolean mustFilter = false;
 		KeyValue oKeyValue = cacheHelper.getRequestsByKey(key);
@@ -63,9 +100,7 @@ public class FilterHelper {
 	}
 	
 	private boolean filterUnwishedClients(String key) throws JsonMappingException, JsonProcessingException {
-		logger.info("ENTRO EN UNWISHED");
 		boolean mustFilter = proxyHelper.isUnwishedClient(key);
-		logger.info("MUST FILTER: "+mustFilter);
 		return mustFilter;
 	}
 	
@@ -73,6 +108,8 @@ public class FilterHelper {
 		/*
 		 * idKeyType = 1 ==> Sería para cliente y para path.
 		 * idKeyType = 2 ==> Sería para cliente y path en conjunto.
+		 * Esto es porque la Key de Cliente y Path en conjunto tiene un "_" más y es el símbolo que
+		 * uso para separar los componentes de la key
 		 */
 		boolean mustFilter = false;
 		Integer counter = oKeyValue.getValue();
@@ -88,39 +125,6 @@ public class FilterHelper {
 		return mustFilter;
 	}
 		
-	public FilterProcessResponse executeFilters(String client, String path) throws JsonMappingException, JsonProcessingException {
-		logger.info("LLEGO A EJECUTAR FILTROS");
-		LocalDateTime dateTime = LocalDateTime.now();
-		String fecha = dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
-		
-		String keyFilterByClient = client.concat("_").concat(fecha);
-		String keyFilterByPath = path.concat("_").concat(fecha);
-		String keyFilterByClientAndPath = client.concat("_").concat(path).concat("_").concat(fecha);
-		
-		if(!this.filterUnwishedClients(client)) {
-			logger.info("LLEGO A EJECUTAR FILTROS NO DESEADO");
-			if(!this.filterByClient(keyFilterByClient)) {
-				cacheHelper.saveCache(keyFilterByClient);
-			}else {
-				return new FilterProcessResponse(true,"Too Many Connections: se alcanzó el máximo de requests por cliente.",HttpStatus.TOO_MANY_REQUESTS);
-			}
 
-			if (!this.filterByPath(keyFilterByPath)){
-				cacheHelper.saveCache(keyFilterByPath);
-			}else{
-				return new FilterProcessResponse(true,"Too Many Connections: se alcanzó el máximo de requests por path.",HttpStatus.TOO_MANY_REQUESTS);
-			}
-
-			if (!this.filterByClientAndPath(keyFilterByClientAndPath)){
-				cacheHelper.saveCache(keyFilterByClientAndPath);
-			}else{
-				return new FilterProcessResponse(true,"Too Many Connections: se alcanzó el máximo de requests por cliente y path.",HttpStatus.TOO_MANY_REQUESTS);
-			}
-			
-			return new FilterProcessResponse(false,"",HttpStatus.ACCEPTED);			
-		}else {
-			return new FilterProcessResponse(true,"Cliente no deseado.",HttpStatus.UNAUTHORIZED);
-		}
-	}
 	
 }
